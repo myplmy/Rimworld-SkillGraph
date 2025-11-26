@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+    <packageId>Uboy.SkillGraph</packageId>
+    <name>Skill Graph</name>
+    <author>Uboy</author>
+    <supportedVersions>
+        <li>1.6</li>
+    </supportedVersions>
+    <modVersion>1.0.0</modVersion>
+<description>
+후사르 변형(Hussar Transformation)
+
+베이스라이너(기본 인간종족) 정착민을 후사르로 변형하는 장치를 추가합니다. 이 모드는 바이오테크 DLC를 필요로 합니다.
+Adds a device to transform baseliner(default human race) into Hussars. This mod requires the Biotech DLC.
+
+※ 프리뷰 이미지 작성 및 게임 내용 번역에 AI가 활용되었습니다.
+※ AI was used to create the preview image and translate the in-game content.
+</description>
+    <modDependencies>
+        <li>
+            <packageId>Ludeon.RimWorld.Biotech</packageId>
+            <displayName>Biotech</displayName>
+        </li>
+    </modDependencies>
+</ModMetaData>

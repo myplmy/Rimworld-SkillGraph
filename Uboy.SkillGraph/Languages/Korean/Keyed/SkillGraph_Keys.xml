@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!-- ITab Label -->
+  <TabSkillHistory>기술 레벨 기록</TabSkillHistory>
+
+  <!-- UI Strings -->
+  <SG_SelectSkill>기술 선택</SG_SelectSkill>
+  <SG_NoData>기록된 데이터가 없습니다.</SG_NoData>
+  
+  <!-- Tooltip Format: {0} is Level, {1} is Percentage -->
+  <SG_LevelTooltip>레벨: {0} ({1})</SG_LevelTooltip>
+</LanguageData>

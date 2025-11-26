@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+  <!-- ITab Label -->
+  <TabSkillHistory>Skill level history</TabSkillHistory>
+
+  <!-- UI Strings -->
+  <SG_SelectSkill>Select Skill</SG_SelectSkill>
+  <SG_NoData>No data recorded yet.</SG_NoData>
+  
+  <!-- Tooltip Format: {0} is Level, {1} is Percentage -->
+  <SG_LevelTooltip>Lv: {0} ({1})</SG_LevelTooltip>
+</LanguageData>
