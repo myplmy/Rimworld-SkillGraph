@@ -217,6 +217,18 @@ namespace SkillGraph
                 Find.WindowStack.Add(new FloatMenu(options));
             }
 
+            // [디버그 기능 추가] 데이터 포인트 개수 표시 (DevMode일 때만)
+            if (Prefs.DevMode && history != null)
+            {
+                int totalPoints = history.skillRecords.Values.Sum(list => list.Count);
+                Rect debugRect = new Rect(dropdownRect.xMax + 10f, topBarRect.y, 200f, 30f);
+                Text.Anchor = TextAnchor.MiddleLeft;
+                Text.Font = GameFont.Tiny;
+                Widgets.Label(debugRect, $"Total Points: {totalPoints}");
+                Text.Font = GameFont.Small;
+                Text.Anchor = TextAnchor.UpperLeft;
+            }
+
             // 하단 필터 버튼
             Rect bottomBarRect = rect.BottomPartPixels(30f);
             DrawFilterButtons(bottomBarRect);
