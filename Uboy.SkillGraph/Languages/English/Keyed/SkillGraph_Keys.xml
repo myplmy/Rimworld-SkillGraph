@@ -5,6 +5,7 @@
 
   <!-- UI Strings -->
   <SG_SelectSkill>Select Skill</SG_SelectSkill>
+  <SG_AllSkills>All Skills</SG_AllSkills>
   <SG_NoData>No data recorded yet.</SG_NoData>
   
   <!-- Tooltip Format: {0} is Level, {1} is Percentage -->

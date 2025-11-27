@@ -1,7 +1,8 @@
-﻿using System;
+﻿using RimWorld;
+using SkillGraph;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using RimWorld;
 using Verse;
 
 namespace SkillGraph
@@ -24,17 +25,75 @@ namespace SkillGraph
         }
     }
 
-    public class PawnSkillHistory : IExposable
+    public class SkillDataLayers : IExposable
     {
-        public Dictionary<SkillDef, List<SkillSnapshot>> skillRecords = new Dictionary<SkillDef, List<SkillSnapshot>>();
+        public List<SkillSnapshot> layer0 = new List<SkillSnapshot>();
+        public List<SkillSnapshot> layer1 = new List<SkillSnapshot>();
+        public int removedCount = 0;  // ← 추가: layer0에서 제거된 데이터 개수 추적
+
+        public List<SkillSnapshot> GetAllData()
+        {
+            var allData = new List<SkillSnapshot>();
+            allData.AddRange(layer0);
+            allData.AddRange(layer1);
+            return allData.OrderBy(s => s.tickAbs).ToList();
+        }
 
         public void ExposeData()
         {
+            Scribe_Collections.Look(ref layer0, "layer0", LookMode.Deep);
+            Scribe_Collections.Look(ref layer1, "layer1", LookMode.Deep);
+            Scribe_Values.Look(ref removedCount, "removedCount", 0);  // ← 추가
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                if (layer0 == null) layer0 = new List<SkillSnapshot>();
+                if (layer1 == null) layer1 = new List<SkillSnapshot>();
+            }
+        }
+    }
+
+    public class PawnSkillHistory : IExposable
+    {
+        public Dictionary<SkillDef, SkillDataLayers> skillLayers
+            = new Dictionary<SkillDef, SkillDataLayers>();
+
+        // 기존 호환성을 위한 마이그레이션
+        public Dictionary<SkillDef, List<SkillSnapshot>> skillRecords
+            = new Dictionary<SkillDef, List<SkillSnapshot>>();
+
+        public void ExposeData()
+        {
+            Scribe_Collections.Look(ref skillLayers, "skillLayers", LookMode.Def, LookMode.Deep);
             Scribe_Collections.Look(ref skillRecords, "skillRecords", LookMode.Def, LookMode.Deep);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
+                if (skillLayers == null) skillLayers = new Dictionary<SkillDef, SkillDataLayers>();
                 if (skillRecords == null) skillRecords = new Dictionary<SkillDef, List<SkillSnapshot>>();
+
+                if (skillRecords.Count > 0 && skillLayers.Count == 0)
+                {
+                    MigrateOldData();
+                    skillRecords.Clear();
+                }
             }
+        }
+
+        private void MigrateOldData()
+        {
+            const int Layer0_EndTick = 300 * 60000;
+            foreach (var kvp in skillRecords)
+            {
+                var layers = new SkillDataLayers();
+                foreach (var snapshot in kvp.Value)
+                {
+                    if (snapshot.tickAbs <= Layer0_EndTick)
+                        layers.layer0.Add(snapshot);
+                    else
+                        layers.layer1.Add(snapshot);
+                }
+                skillLayers[kvp.Key] = layers;
+            }
+            Log.Message($"[SkillGraph] Migration completed: {skillRecords.Count} skills converted");
         }
     }
 
@@ -44,15 +103,40 @@ namespace SkillGraph
 
     public class SkillGraphGameComponent : GameComponent
     {
-        private Dictionary<string, PawnSkillHistory> historyData = new Dictionary<string, PawnSkillHistory>();
+        // ==========================================
+        // 🔧 테스트 vs 프로덕션 설정 (조건부 컴파일)
+        // ==========================================
+#if DEBUG
+        // 테스트용 설정: RecordInterval = 60 (약 1초마다)
+        private const int RecordInterval = 60;
+        private const int Layer0RecordCount = 30;  // 30번 기록 (약 30초)
+        private const int Layer1RecordSkip = 3;   // 3번에 1번 기록
+        private const int MaxRecordsPerSkill = 1800;  // 30 + 1770
+
+#else
+        // 프로덕션 설정: RecordInterval = 60000 (약 1일마다)
+        private const int RecordInterval = 60000;
+        private const int Layer0RecordCount = 300;  // 300번 기록 (약 300일)
+        private const int Layer1RecordSkip = 3;    // 3일에 1번 기록
+        private const int MaxRecordsPerSkill = 1800;  // 300 + 1500
+#endif
+
+        private Dictionary<string, PawnSkillHistory> historyData
+            = new Dictionary<string, PawnSkillHistory>();
 
         private int lastRecordedTick = -1;
-
-        private const int RecordInterval = 60000; // 1일 간격
-        private const int MaxRecordsPerSkill = 1800; // 15일 * 4분기 * 30년
+        private int recordPawnCallCount = 0;
+        private int recordCount = 0;  // 기록 횟수 추적 (테스트용)
 
         public SkillGraphGameComponent(Game game)
         {
+        }
+
+        public override void LoadedGame()
+        {
+            base.LoadedGame();
+            lastRecordedTick = Find.TickManager.TicksGame;
+            recordCount = 0;
         }
 
         public PawnSkillHistory GetHistory(Pawn pawn)
@@ -79,22 +163,28 @@ namespace SkillGraph
 
         public override void GameComponentTick()
         {
-            // [최적화] LongTick 구현
-            // GameComponent는 LongTick이 없으므로, 직접 구현합니다.
-            // 2000틱(약 33.33초)마다 한 번만 로직을 수행하여 CPU 연산을 1/2000로 줄입니다.
             int currentTick = Find.TickManager.TicksGame;
-            if (currentTick % 2000 != 0) return;
+            if (currentTick % 30 != 0) return;
 
-            // 기록 주기가 되었는지 확인 (LongTick 주기만큼의 오차는 허용)
             if (currentTick - lastRecordedTick >= RecordInterval)
             {
                 RecordSkills();
                 lastRecordedTick = currentTick;
+                recordCount++;
+
+#if DEBUG
+                // 테스트용: 기록 횟수 로그
+                if (recordCount % 10 == 0)
+                {
+                    Log.Message($"[SkillGraph-TEST] Records: {recordCount}, Ticks: {currentTick}");
+                }
+#endif
             }
         }
 
         private void RecordSkills()
         {
+            recordPawnCallCount++;
             var pawns = PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive_OfPlayerFaction;
             foreach (Pawn pawn in pawns)
             {
@@ -126,107 +216,112 @@ namespace SkillGraph
 
             foreach (SkillRecord skill in pawn.skills.skills)
             {
-                if (!history.skillRecords.ContainsKey(skill.def))
+                if (!history.skillLayers.ContainsKey(skill.def))
                 {
-                    history.skillRecords[skill.def] = new List<SkillSnapshot>();
+                    history.skillLayers[skill.def] = new SkillDataLayers();
                 }
 
-                List<SkillSnapshot> records = history.skillRecords[skill.def];
+                SkillDataLayers layers = history.skillLayers[skill.def];
 
-                if (records.Count >= MaxRecordsPerSkill)
-                {
-                    CullOldData(records);
-                }
+                // ==========================================
+                // 🎯 사용자 제안 방식: FIFO + 3개마다 1개 샘플링
+                // layer0: 항상 최신 30개 유지
+                // layer1: layer0에서 제거되는 데이터 중 3개마다 1개씩만 저장
+                // ==========================================
 
-                SkillSnapshot snapshot = new SkillSnapshot
+                // 스냅샷 생성 (새 데이터)
+                SkillSnapshot newSnapshot = new SkillSnapshot
                 {
                     tickAbs = currentTick,
                     level = skill.Level,
                     xpProgress = skill.XpProgressPercent
                 };
-                records.Add(snapshot);
-            }
-        }
 
-        private void CullOldData(List<SkillSnapshot> records)
-        {
-            if (records.Count < 10) return;
-
-            int preserveCount = records.Count / 5;
-            int cullEndIndex = records.Count - preserveCount;
-
-            List<SkillSnapshot> keptRecords = new List<SkillSnapshot>();
-            keptRecords.Add(records[0]);
-
-            for (int i = 1; i < records.Count; i++)
-            {
-                if (i >= cullEndIndex)
+                if (layers.layer0.Count < Layer0RecordCount)
                 {
-                    keptRecords.Add(records[i]);
+                    // 1️⃣ layer0이 30개 미만: 그냥 추가
+                    layers.layer0.Add(newSnapshot);
                 }
-                else if (i % 2 == 0)
+                else
                 {
-                    keptRecords.Add(records[i]);
-                }
-            }
+                    // 2️⃣ layer0이 30개 이상: FIFO 작동
 
-            records.Clear();
-            records.AddRange(keptRecords);
-        }
-    }
+                    // 2-1. 제거 카운트 증가
+                    layers.removedCount++;
 
-    // ==========================================
-    // 3. 탭 주입기 (Injector)
-    // ==========================================
-
-    [StaticConstructorOnStartup]
-    public static class TabInjector
-    {
-        static TabInjector()
-        {
-            Log.Message("[SkillGraph] Injector started...");
-
-            int count = 0;
-            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
-            {
-                if (def.race != null && def.race.Humanlike)
-                {
-                    // 림월드는 탭을 리스트의 역순(Reverse)으로 그립니다.
-                    // 즉, 리스트의 마지막 요소가 화면 왼쪽(Left)에, 첫 번째 요소가 화면 오른쪽(Right)에 표시됩니다.
-                    // 따라서 맨 오른쪽에 탭을 두려면 리스트의 0번 인덱스(Insert(0))에 넣어야 합니다.
-
-                    if (def.inspectorTabs == null)
-                        def.inspectorTabs = new List<Type>();
-
-                    if (def.inspectorTabs.Contains(typeof(ITab_Pawn_SkillHistory)))
+                    // 2-2. 3개마다 1개씩 layer1에 저장 (1번째, 4번째, 7번째...)
+                    if (layers.removedCount % 3 == 1)
                     {
-                        def.inspectorTabs.Remove(typeof(ITab_Pawn_SkillHistory));
-                    }
-                    // 수정됨: Add -> Insert(0, ...)
-                    def.inspectorTabs.Insert(0, typeof(ITab_Pawn_SkillHistory));
+                        // layer0[0]을 layer1로 이동
+                        layers.layer1.Add(layers.layer0[0]);
 
-                    if (def.inspectorTabsResolved == null)
-                        def.inspectorTabsResolved = new List<InspectTabBase>();
-
-                    def.inspectorTabsResolved.RemoveAll(t => t is ITab_Pawn_SkillHistory);
-
-                    try
-                    {
-                        InspectTabBase tabInstance = InspectTabManager.GetSharedInstance(typeof(ITab_Pawn_SkillHistory));
-                        if (tabInstance != null)
+#if DEBUG
+                        if (layers.removedCount <= 20)
                         {
-                            // 수정됨: Add -> Insert(0, ...)
-                            def.inspectorTabsResolved.Insert(0, tabInstance);
-                            count++;
+                            Log.Message($"[SkillGraph] {skill.def.LabelCap}: removedCount={layers.removedCount}, 저장됨");
                         }
+#endif
                     }
-                    catch (Exception ex)
-                    {
-                        Log.Error($"[SkillGraph] Failed to inject tab into {def.defName}: {ex}");
-                    }
+
+                    // 2-3. layer0에서 가장 오래된 데이터 제거
+                    layers.layer0.RemoveAt(0);
+
+                    // 2-4. 새 데이터를 layer0에 추가
+                    layers.layer0.Add(newSnapshot);
                 }
             }
-            Log.Message($"[SkillGraph] Injector finished. Tab forced to start (Rightmost UI) for {count} races.");
         }
+}
+
+// ==========================================
+// 3. 탭 주입기 (Injector)
+// ==========================================
+
+[StaticConstructorOnStartup]
+public static class TabInjector
+{
+    static TabInjector()
+    {
+        Log.Message("[SkillGraph] Injector started...");
+#if DEBUG
+        Log.Message("[SkillGraph] TEST MODE: RecordInterval = 60 (약 1초마다)");
+#endif
+
+        int count = 0;
+        foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
+        {
+            if (def.race != null && def.race.Humanlike)
+            {
+                if (def.inspectorTabs == null)
+                    def.inspectorTabs = new List<Type>();
+
+                if (def.inspectorTabs.Contains(typeof(ITab_Pawn_SkillHistory)))
+                {
+                    def.inspectorTabs.Remove(typeof(ITab_Pawn_SkillHistory));
+                }
+                def.inspectorTabs.Insert(0, typeof(ITab_Pawn_SkillHistory));
+
+                if (def.inspectorTabsResolved == null)
+                    def.inspectorTabsResolved = new List<InspectTabBase>();
+
+                def.inspectorTabsResolved.RemoveAll(t => t is ITab_Pawn_SkillHistory);
+
+                try
+                {
+                    InspectTabBase tabInstance = InspectTabManager.GetSharedInstance(typeof(ITab_Pawn_SkillHistory));
+                    if (tabInstance != null)
+                    {
+                        def.inspectorTabsResolved.Insert(0, tabInstance);
+                        count++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"[SkillGraph] Failed to inject tab into {def.defName}: {ex}");
+                }
+            }
+        }
+        Log.Message($"[SkillGraph] Injector finished. Tab injected for {count} races.");
     }
+}
 }

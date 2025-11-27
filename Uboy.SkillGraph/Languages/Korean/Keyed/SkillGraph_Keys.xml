@@ -5,6 +5,7 @@
 
   <!-- UI Strings -->
   <SG_SelectSkill>기술 선택</SG_SelectSkill>
+  <SG_AllSkills>모든 기술</SG_AllSkills>
   <SG_NoData>기록된 데이터가 없습니다.</SG_NoData>
   
   <!-- Tooltip Format: {0} is Level, {1} is Percentage -->
