@@ -5,7 +5,7 @@
     <Configurations>Debug;Release;assemblies</Configurations>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'assemblies|Any CPU' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'assemblies' ">
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>Z:\rimworld_mod_dev\Rimworld-SkillGraph\Uboy.SkillGraph\Assemblies</OutputPath>
     <DebugType>none</DebugType>

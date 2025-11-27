@@ -7,6 +7,12 @@
   <SG_SelectSkill>기술 선택</SG_SelectSkill>
   <SG_AllSkills>모든 기술</SG_AllSkills>
   <SG_NoData>기록된 데이터가 없습니다.</SG_NoData>
+
+  <!-- Filter Range Buttons - Production (Days) -->
+  <SG_Days30>최근 30일</SG_Days30>
+  <SG_Days100>최근 100일</SG_Days100>
+  <SG_Days300>최근 300일</SG_Days300>
+  <SG_RangeAll>전체</SG_RangeAll>
   
   <!-- Tooltip Format: {0} is Level, {1} is Percentage -->
   <SG_LevelTooltip>레벨: {0} ({1})</SG_LevelTooltip>

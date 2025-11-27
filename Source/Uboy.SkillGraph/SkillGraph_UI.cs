@@ -461,13 +461,13 @@ namespace SkillGraph
             { currentRange = GraphRange.All; InvalidateCache(); }
 #else
     // 프로덕션용: 일 단위 범위
-    if (Widgets.ButtonText(new Rect(rect.x, rect.y, width, rect.height), "Last 30 Days"))
+    if (Widgets.ButtonText(new Rect(rect.x, rect.y, width, rect.height), "SG_Days30".Translate() ))
     { currentRange = GraphRange.Days30; InvalidateCache(); }
-    if (Widgets.ButtonText(new Rect(rect.x + width, rect.y, width, rect.height), "Last 100 Days"))
+    if (Widgets.ButtonText(new Rect(rect.x + width, rect.y, width, rect.height), "SG_Days100".Translate() ))
     { currentRange = GraphRange.Days100; InvalidateCache(); }
-    if (Widgets.ButtonText(new Rect(rect.x + width * 2, rect.y, width, rect.height), "Last 300 Days"))
+    if (Widgets.ButtonText(new Rect(rect.x + width * 2, rect.y, width, rect.height), "SG_Days300".Translate() ))
     { currentRange = GraphRange.Days300; InvalidateCache(); }
-    if (Widgets.ButtonText(new Rect(rect.x + width * 3, rect.y, width, rect.height), "All"))
+    if (Widgets.ButtonText(new Rect(rect.x + width * 3, rect.y, width, rect.height), "SG_RangeAll".Translate() ))
     { currentRange = GraphRange.All; InvalidateCache(); }
 #endif
         }

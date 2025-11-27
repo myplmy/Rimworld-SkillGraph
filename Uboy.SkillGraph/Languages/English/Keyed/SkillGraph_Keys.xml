@@ -7,7 +7,13 @@
   <SG_SelectSkill>Select Skill</SG_SelectSkill>
   <SG_AllSkills>All Skills</SG_AllSkills>
   <SG_NoData>No data recorded yet.</SG_NoData>
-  
+
+  <!-- Filter Range Buttons - Production (Days) -->
+  <SG_Days30>Last 30 Days</SG_Days30>
+  <SG_Days100>Last 100 Days</SG_Days100>
+  <SG_Days300>Last 300 Days</SG_Days300>
+  <SG_RangeAll>All</SG_RangeAll>
+
   <!-- Tooltip Format: {0} is Level, {1} is Percentage -->
   <SG_LevelTooltip>Lv: {0} ({1})</SG_LevelTooltip>
 </LanguageData>
