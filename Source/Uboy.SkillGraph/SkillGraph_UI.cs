@@ -793,9 +793,9 @@ namespace SkillGraph
     // 프로덕션
     switch (currentRange)
     {
-        case GraphRange.Days30: tickInterval = 60000 * 3; break;
-        case GraphRange.Days100: tickInterval = 60000 * 10; break;
-        case GraphRange.Days300: tickInterval = 60000 * 15; break;
+        case GraphRange.Days30: tickInterval = 60000 * 6; break;      // 6일마다
+        case GraphRange.Days100: tickInterval = 60000 * 20; break;    // 20일마다
+        case GraphRange.Days300: tickInterval = 60000 * 60; break;    // 60일마다
         case GraphRange.All:
         default:
             float targetLabels = 8f;
