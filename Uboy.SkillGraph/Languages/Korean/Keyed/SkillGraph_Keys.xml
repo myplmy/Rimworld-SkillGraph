@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
   <!-- ITab Label -->
-  <TabSkillHistory>기술 레벨 기록</TabSkillHistory>
+  <TabSkillHistory>기술</TabSkillHistory>
 
   <!-- UI Strings -->
   <SG_SelectSkill>기술 선택</SG_SelectSkill>

@@ -49,7 +49,7 @@ namespace SkillGraph
         private int lastRecordedTick = -1;
 
         private const int RecordInterval = 60000; // 1일 간격
-        private const int MaxRecordsPerSkill = 1200;
+        private const int MaxRecordsPerSkill = 1800; // 15일 * 4분기 * 30년
 
         public SkillGraphGameComponent(Game game)
         {
@@ -191,6 +191,10 @@ namespace SkillGraph
             {
                 if (def.race != null && def.race.Humanlike)
                 {
+                    // 림월드는 탭을 리스트의 역순(Reverse)으로 그립니다.
+                    // 즉, 리스트의 마지막 요소가 화면 왼쪽(Left)에, 첫 번째 요소가 화면 오른쪽(Right)에 표시됩니다.
+                    // 따라서 맨 오른쪽에 탭을 두려면 리스트의 0번 인덱스(Insert(0))에 넣어야 합니다.
+
                     if (def.inspectorTabs == null)
                         def.inspectorTabs = new List<Type>();
 
@@ -198,7 +202,8 @@ namespace SkillGraph
                     {
                         def.inspectorTabs.Remove(typeof(ITab_Pawn_SkillHistory));
                     }
-                    def.inspectorTabs.Add(typeof(ITab_Pawn_SkillHistory));
+                    // 수정됨: Add -> Insert(0, ...)
+                    def.inspectorTabs.Insert(0, typeof(ITab_Pawn_SkillHistory));
 
                     if (def.inspectorTabsResolved == null)
                         def.inspectorTabsResolved = new List<InspectTabBase>();
@@ -210,7 +215,8 @@ namespace SkillGraph
                         InspectTabBase tabInstance = InspectTabManager.GetSharedInstance(typeof(ITab_Pawn_SkillHistory));
                         if (tabInstance != null)
                         {
-                            def.inspectorTabsResolved.Add(tabInstance);
+                            // 수정됨: Add -> Insert(0, ...)
+                            def.inspectorTabsResolved.Insert(0, tabInstance);
                             count++;
                         }
                     }
@@ -220,7 +226,7 @@ namespace SkillGraph
                     }
                 }
             }
-            Log.Message($"[SkillGraph] Injector finished. Tab forced to end for {count} races.");
+            Log.Message($"[SkillGraph] Injector finished. Tab forced to start (Rightmost UI) for {count} races.");
         }
     }
 }

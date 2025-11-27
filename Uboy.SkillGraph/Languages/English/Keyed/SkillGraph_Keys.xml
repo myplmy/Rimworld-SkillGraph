@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <LanguageData>
   <!-- ITab Label -->
-  <TabSkillHistory>Skill level history</TabSkillHistory>
+  <TabSkillHistory>Skills</TabSkillHistory>
 
   <!-- UI Strings -->
   <SG_SelectSkill>Select Skill</SG_SelectSkill>
