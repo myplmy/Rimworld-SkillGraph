@@ -10,12 +10,11 @@ namespace SkillGraph
     // 1. 데이터 모델 (Data Models)
     // ==========================================
 
-    // 특정 시점의 스킬 상태를 저장하는 클래스
     public class SkillSnapshot : IExposable
     {
-        public int tickAbs;       // 기록된 절대 시간 (GenTicks.TicksGame)
-        public int level;         // 스킬 레벨 (0-20)
-        public float xpProgress;  // 다음 레벨까지의 경험치 비율 (0.0 ~ 1.0) - 그래프를 부드럽게 그리기 위함
+        public int tickAbs;
+        public int level;
+        public float xpProgress;
 
         public void ExposeData()
         {
@@ -25,18 +24,13 @@ namespace SkillGraph
         }
     }
 
-    // 한 폰(Pawn)의 모든 스킬 기록을 담는 컨테이너
     public class PawnSkillHistory : IExposable
     {
-        // Key: SkillDef (사격, 격투 등), Value: 시간순 기록 리스트
         public Dictionary<SkillDef, List<SkillSnapshot>> skillRecords = new Dictionary<SkillDef, List<SkillSnapshot>>();
 
         public void ExposeData()
         {
-            // Dictionary 저장 시 Key는 Def로, Value는 Deep(내부 데이터까지) 저장
             Scribe_Collections.Look(ref skillRecords, "skillRecords", LookMode.Def, LookMode.Deep);
-
-            // 로드 후 null 방지
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (skillRecords == null) skillRecords = new Dictionary<SkillDef, List<SkillSnapshot>>();
@@ -48,17 +42,19 @@ namespace SkillGraph
     // 2. 게임 컴포넌트 (GameComponent)
     // ==========================================
 
-    // 게임 전체 데이터를 관리하고 매일 기록을 수행하는 컴포넌트
     public class SkillGraphGameComponent : GameComponent
     {
-        // Pawn 객체 대신 ThingID(string)를 Key로 사용하여 데이터 안전성 확보
         private Dictionary<string, PawnSkillHistory> historyData = new Dictionary<string, PawnSkillHistory>();
+
+        private int lastRecordedTick = -1;
+
+        private const int RecordInterval = 60000; // 1일 간격
+        private const int MaxRecordsPerSkill = 1200;
 
         public SkillGraphGameComponent(Game game)
         {
         }
 
-        // 데이터를 가져오는 헬퍼 메서드
         public PawnSkillHistory GetHistory(Pawn pawn)
         {
             if (pawn == null) return null;
@@ -69,11 +65,11 @@ namespace SkillGraph
             return null;
         }
 
-        // 데이터 저장/로드
         public override void ExposeData()
         {
             base.ExposeData();
             Scribe_Collections.Look(ref historyData, "historyData", LookMode.Value, LookMode.Deep);
+            Scribe_Values.Look(ref lastRecordedTick, "lastRecordedTick", -1);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
@@ -81,35 +77,33 @@ namespace SkillGraph
             }
         }
 
-        // 매 틱마다 실행 (여기서 하루 1회 체크)
         public override void GameComponentTick()
         {
-            base.GameComponentTick();
+            // [최적화] LongTick 구현
+            // GameComponent는 LongTick이 없으므로, 직접 구현합니다.
+            // 2000틱(약 33.33초)마다 한 번만 로직을 수행하여 CPU 연산을 1/2000로 줄입니다.
+            int currentTick = Find.TickManager.TicksGame;
+            if (currentTick % 2000 != 0) return;
 
-            // 60,000틱 = 1일. 하루에 한 번만 실행
-            if (Find.TickManager.TicksGame % 60000 == 0)
+            // 기록 주기가 되었는지 확인 (LongTick 주기만큼의 오차는 허용)
+            if (currentTick - lastRecordedTick >= RecordInterval)
             {
                 RecordSkills();
+                lastRecordedTick = currentTick;
             }
         }
 
         private void RecordSkills()
         {
-            // 수정됨: PawnsFinder의 올바른 속성 이름 사용 (TravellingTransporters)
-            // 현재 맵에 있거나 캐러밴 등에 있는 '플레이어 소속' 림들을 찾음
             var pawns = PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive_OfPlayerFaction;
-
             foreach (Pawn pawn in pawns)
             {
-                // 인간형이고 스킬이 있는 존재만 기록
                 if (pawn.RaceProps.Humanlike && pawn.skills != null)
                 {
                     RecordPawn(pawn);
                 }
             }
 
-            // 죄수 별도 처리 (플레이어 팩션이 아니므로 따로 검색)
-            // AllMaps_PrisonersOfColony는 제공해주신 리스트에 존재하므로 유지
             var prisoners = PawnsFinder.AllMaps_PrisonersOfColony;
             foreach (Pawn prisoner in prisoners)
             {
@@ -137,17 +131,47 @@ namespace SkillGraph
                     history.skillRecords[skill.def] = new List<SkillSnapshot>();
                 }
 
-                // 스냅샷 생성 및 저장
+                List<SkillSnapshot> records = history.skillRecords[skill.def];
+
+                if (records.Count >= MaxRecordsPerSkill)
+                {
+                    CullOldData(records);
+                }
+
                 SkillSnapshot snapshot = new SkillSnapshot
                 {
                     tickAbs = currentTick,
                     level = skill.Level,
-                    // XpProgressPercent는 0.0~1.0 사이 값
                     xpProgress = skill.XpProgressPercent
                 };
-
-                history.skillRecords[skill.def].Add(snapshot);
+                records.Add(snapshot);
             }
+        }
+
+        private void CullOldData(List<SkillSnapshot> records)
+        {
+            if (records.Count < 10) return;
+
+            int preserveCount = records.Count / 5;
+            int cullEndIndex = records.Count - preserveCount;
+
+            List<SkillSnapshot> keptRecords = new List<SkillSnapshot>();
+            keptRecords.Add(records[0]);
+
+            for (int i = 1; i < records.Count; i++)
+            {
+                if (i >= cullEndIndex)
+                {
+                    keptRecords.Add(records[i]);
+                }
+                else if (i % 2 == 0)
+                {
+                    keptRecords.Add(records[i]);
+                }
+            }
+
+            records.Clear();
+            records.AddRange(keptRecords);
         }
     }
 
@@ -160,7 +184,9 @@ namespace SkillGraph
     {
         static TabInjector()
         {
-            // 게임 내 모든 ThingDef를 순회하며 인간형 종족에게 탭 주입
+            Log.Message("[SkillGraph] Injector started...");
+
+            int count = 0;
             foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs)
             {
                 if (def.race != null && def.race.Humanlike)
@@ -168,13 +194,33 @@ namespace SkillGraph
                     if (def.inspectorTabs == null)
                         def.inspectorTabs = new List<Type>();
 
-                    // 중복 방지 후 추가
-                    if (!def.inspectorTabs.Contains(typeof(ITab_Pawn_SkillHistory)))
+                    if (def.inspectorTabs.Contains(typeof(ITab_Pawn_SkillHistory)))
                     {
-                        def.inspectorTabs.Add(typeof(ITab_Pawn_SkillHistory));
+                        def.inspectorTabs.Remove(typeof(ITab_Pawn_SkillHistory));
+                    }
+                    def.inspectorTabs.Add(typeof(ITab_Pawn_SkillHistory));
+
+                    if (def.inspectorTabsResolved == null)
+                        def.inspectorTabsResolved = new List<InspectTabBase>();
+
+                    def.inspectorTabsResolved.RemoveAll(t => t is ITab_Pawn_SkillHistory);
+
+                    try
+                    {
+                        InspectTabBase tabInstance = InspectTabManager.GetSharedInstance(typeof(ITab_Pawn_SkillHistory));
+                        if (tabInstance != null)
+                        {
+                            def.inspectorTabsResolved.Add(tabInstance);
+                            count++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error($"[SkillGraph] Failed to inject tab into {def.defName}: {ex}");
                     }
                 }
             }
+            Log.Message($"[SkillGraph] Injector finished. Tab forced to end for {count} races.");
         }
     }
 }
