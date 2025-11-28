@@ -81,6 +81,7 @@ namespace SkillGraph
         private const int RecordInterval = 60;
         private const int Layer0RecordCount = 30;  // 30번 기록 (약 30초)
         private const int Layer1RecordSkip = 3;   // 3번에 1번 기록
+        private int recordCount = 0;  // 기록 횟수 추적 (테스트용)
 
 #else
         // 프로덕션 설정: RecordInterval = 60000 (약 1일마다)
@@ -93,8 +94,7 @@ namespace SkillGraph
             = new Dictionary<string, PawnSkillHistory>();
 
         private int lastRecordedTick = -1;
-        private int recordPawnCallCount = 0;
-        private int recordCount = 0;  // 기록 횟수 추적 (테스트용)
+
 
         public SkillGraphGameComponent(Game game)
         {
@@ -104,7 +104,9 @@ namespace SkillGraph
         {
             base.LoadedGame();
             lastRecordedTick = Find.TickManager.TicksGame;
+#if DEBUG
             recordCount = 0;
+#endif
         }
 
         public PawnSkillHistory GetHistory(Pawn pawn)
@@ -138,9 +140,10 @@ namespace SkillGraph
             {
                 RecordSkills();
                 lastRecordedTick = currentTick;
-                recordCount++;
+
 
 #if DEBUG
+                recordCount++;
                 // 테스트용: 기록 횟수 로그
                 if (recordCount % 10 == 0)
                 {
@@ -152,7 +155,6 @@ namespace SkillGraph
 
         private void RecordSkills()
         {
-            recordPawnCallCount++;
             var pawns = PawnsFinder.AllMapsCaravansAndTravellingTransporters_Alive_OfPlayerFaction;
             foreach (Pawn pawn in pawns)
             {
