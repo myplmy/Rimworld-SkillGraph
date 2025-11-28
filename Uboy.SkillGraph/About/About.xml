@@ -12,5 +12,8 @@
 
 Adds a graph of skill level changes over time in the pawn's inspect pane.
 정착민의 기술 레벨 변화를 그래프로 보여주는 기능을 추가합니다.
+
+Data is recorded daily for the most recent 300 days. Beyond that, records are retained at 3-day intervals.
+최근 300일간 기록은 매일 기록되며, 그 이후 기록은 3일에 1번씩 보존됩니다.
 </description>
 </ModMetaData>
