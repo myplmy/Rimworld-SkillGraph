@@ -81,14 +81,12 @@ namespace SkillGraph
         private const int RecordInterval = 60;
         private const int Layer0RecordCount = 30;  // 30번 기록 (약 30초)
         private const int Layer1RecordSkip = 3;   // 3번에 1번 기록
-        private const int MaxRecordsPerSkill = 1800;  // 30 + 1770
 
 #else
         // 프로덕션 설정: RecordInterval = 60000 (약 1일마다)
         private const int RecordInterval = 60000;
         private const int Layer0RecordCount = 300;  // 300번 기록 (약 300일)
         private const int Layer1RecordSkip = 3;    // 3일에 1번 기록
-        private const int MaxRecordsPerSkill = 1800;  // 300 + 1500
 #endif
 
         private Dictionary<string, PawnSkillHistory> historyData
@@ -219,8 +217,8 @@ namespace SkillGraph
                     // 2-1. 제거 카운트 증가
                     layers.removedCount++;
 
-                    // 2-2. 3개마다 1개씩 layer1에 저장 (1번째, 4번째, 7번째...)
-                    if (layers.removedCount % 3 == 1)
+                    // 2-2. Layer1RecordSkip개마다 1개씩 layer1에 저장 (1번째, 4번째, 7번째...)
+                    if (layers.removedCount % Layer1RecordSkip == 1)
                     {
                         // layer0[0]을 layer1로 이동
                         layers.layer1.Add(layers.layer0[0]);

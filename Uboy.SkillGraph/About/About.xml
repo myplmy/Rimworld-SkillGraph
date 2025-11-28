@@ -10,13 +10,7 @@
 <description>
 스킬 그래프(Skill Graph)
 
-Displays a graph of skill level changes over time in the pawn's inspector tab.
-정착민의 기술 레벨 변화를 그래프로 보여주는 탭을 추가합니다.
+Adds a graph of skill level changes over time in the pawn's inspect pane.
+정착민의 기술 레벨 변화를 그래프로 보여주는 기능을 추가합니다.
 </description>
-    <modDependencies>
-        <li>
-            <packageId>Ludeon.RimWorld.Biotech</packageId>
-            <displayName>Biotech</displayName>
-        </li>
-    </modDependencies>
 </ModMetaData>
