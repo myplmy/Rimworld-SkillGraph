@@ -627,7 +627,7 @@ namespace SkillGraph
                     int nearestIdx = FindNearestTickIndex(kvp.Value, mouseTickAtX);
                     if (nearestIdx >= 0 && nearestIdx < kvp.Value.Count)
                     {
-                        // ✨ 추가: X 범위 내에 있는지 확인
+                        // 추가: X 범위 내에 있는지 확인
                         var snapshot = kvp.Value[nearestIdx];
                         float snapshotPixelX = graphRect.x + ((float)(snapshot.tickAbs - minTick) / timeRange) * graphRect.width;
                         float distX = Math.Abs(snapshotPixelX - mousePixelX);
@@ -774,7 +774,7 @@ namespace SkillGraph
             int tickInterval;
 
 #if DEBUG
-            // 테스트: 더 간단한 간격
+            // 테스트: 더 짧은 간격
             switch (currentRange)
             {
                 case GraphRange.Seconds30: tickInterval = 300; break;    // 5초마다

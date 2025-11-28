@@ -57,43 +57,13 @@ namespace SkillGraph
         public Dictionary<SkillDef, SkillDataLayers> skillLayers
             = new Dictionary<SkillDef, SkillDataLayers>();
 
-        // 기존 호환성을 위한 마이그레이션
-        public Dictionary<SkillDef, List<SkillSnapshot>> skillRecords
-            = new Dictionary<SkillDef, List<SkillSnapshot>>();
-
         public void ExposeData()
         {
             Scribe_Collections.Look(ref skillLayers, "skillLayers", LookMode.Def, LookMode.Deep);
-            Scribe_Collections.Look(ref skillRecords, "skillRecords", LookMode.Def, LookMode.Deep);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
                 if (skillLayers == null) skillLayers = new Dictionary<SkillDef, SkillDataLayers>();
-                if (skillRecords == null) skillRecords = new Dictionary<SkillDef, List<SkillSnapshot>>();
-
-                if (skillRecords.Count > 0 && skillLayers.Count == 0)
-                {
-                    MigrateOldData();
-                    skillRecords.Clear();
-                }
             }
-        }
-
-        private void MigrateOldData()
-        {
-            const int Layer0_EndTick = 300 * 60000;
-            foreach (var kvp in skillRecords)
-            {
-                var layers = new SkillDataLayers();
-                foreach (var snapshot in kvp.Value)
-                {
-                    if (snapshot.tickAbs <= Layer0_EndTick)
-                        layers.layer0.Add(snapshot);
-                    else
-                        layers.layer1.Add(snapshot);
-                }
-                skillLayers[kvp.Key] = layers;
-            }
-            Log.Message($"[SkillGraph] Migration completed: {skillRecords.Count} skills converted");
         }
     }
 
@@ -104,7 +74,7 @@ namespace SkillGraph
     public class SkillGraphGameComponent : GameComponent
     {
         // ==========================================
-        // 🔧 테스트 vs 프로덕션 설정 (조건부 컴파일)
+        // 테스트 vs 프로덕션 설정 (조건부 컴파일)
         // ==========================================
 #if DEBUG
         // 테스트용 설정: RecordInterval = 60 (약 1초마다)
@@ -224,7 +194,7 @@ namespace SkillGraph
                 SkillDataLayers layers = history.skillLayers[skill.def];
 
                 // ==========================================
-                // 🎯 사용자 제안 방식: FIFO + 3개마다 1개 샘플링
+                // 사용자 제안 방식: FIFO + 3개마다 1개 샘플링
                 // layer0: 항상 최신 30개 유지
                 // layer1: layer0에서 제거되는 데이터 중 3개마다 1개씩만 저장
                 // ==========================================
@@ -239,12 +209,12 @@ namespace SkillGraph
 
                 if (layers.layer0.Count < Layer0RecordCount)
                 {
-                    // 1️⃣ layer0이 30개 미만: 그냥 추가
+                    // 1️ layer0이 30개 미만: 그냥 추가
                     layers.layer0.Add(newSnapshot);
                 }
                 else
                 {
-                    // 2️⃣ layer0이 30개 이상: FIFO 작동
+                    // 2️ layer0이 30개 이상: FIFO 작동
 
                     // 2-1. 제거 카운트 증가
                     layers.removedCount++;
